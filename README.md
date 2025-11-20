@@ -11,3 +11,5 @@ Key features:
 • Comprehensive evaluation metrics (accuracy + safety)
 
 This work demonstrates the critical trade-off between accuracy and safety in clinical AI, providing a foundation for more trustworthy medical AI systems.
+
+clinical-ai, retrieval-augmented-generation, causal-inference, medical-nlp, ai-safety, healthcare-ai, medical-decision-support, low-resource-ai, hallucination-reduction, evidence-based-ai
