@@ -1,0 +1,404 @@
+Documentation Files
+docs/API.md
+
+text
+# Causal-RAG API Documentation
+
+## Core Classes
+
+### CausalRAGPipeline
+The main pipeline class that orchestrates the entire Causal-RAG workflow.
+
+```python
+from causal_rag.core import CausalRAGPipeline
+
+# Initialize pipeline
+pipeline = CausalRAGPipeline()
+
+# Initialize with knowledge base
+knowledge_base = [
+    "Medical research indicates that treatment A causes improvement in condition X.",
+    "Randomized controlled trial shows drug B reduces symptoms of disease Y."
+]
+pipeline.initialize(knowledge_base)
+
+# Answer a question
+result = pipeline.answer("Does treatment A improve condition X?")
+Methods
+initialize(knowledge_base: List[str]): Load and index the knowledge base
+
+answer(question: str, top_k: int = 3) -> Dict: Answer a single question
+
+batch_answer(questions: List[str], top_k: int = 3) -> List[Dict]: Answer multiple questions
+
+CausalRetriever
+Enhanced retriever with causal evidence prioritization.
+
+python
+from causal_rag.core import CausalRetriever
+
+retriever = CausalRetriever()
+retriever.build_index(knowledge_base)
+contexts, scores = retriever.retrieve("clinical question", top_k=3)
+CausalAnalyzer
+Analyzes evidence quality and causal strength.
+
+python
+from causal_rag.core import CausalAnalyzer
+
+analyzer = CausalAnalyzer()
+analysis = analyzer.analyze_evidence_quality(contexts, question)
+answer, confidence = analyzer.determine_answer(analysis)
+Response Format
+The pipeline returns a dictionary with the following structure:
+
+python
+{
+    "answer": "yes",  # or "no", "maybe"
+    "confidence": 0.85,
+    "explanation": "Detailed explanation of the reasoning...",
+    "evidence_analysis": {
+        "total_contexts": 3,
+        "consistent_yes": 2,
+        "consistent_no": 0,
+        "causal_evidence_count": 1,
+        # ... other analysis metrics
+    },
+    "retrieved_contexts": ["Context 1...", "Context 2..."],
+    "retrieval_scores": [0.92, 0.85],
+    "retrieved_count": 2,
+    "question": "Original question"
+}
+Configuration
+Causal Patterns
+The system uses predefined causal patterns to identify strong evidence:
+
+Strong causal: "randomized controlled trial", "causes", "mechanism"
+
+Moderate causal: "associated with", "predicts", "effect of"
+
+Confidence Thresholds
+High confidence: > 0.7 (strong causal evidence)
+
+Moderate confidence: 0.5-0.7 (consistent non-causal evidence)
+
+Low confidence: < 0.5 (mixed or weak evidence)
+
+text
+
+**docs/deployment.md**
+Deployment Guide
+Local Development Setup
+Clone the repository
+
+bash
+git clone https://github.com/your-username/Causal-RAG.git
+cd Causal-RAG
+Create virtual environment
+
+bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+Install dependencies
+
+bash
+pip install -e .
+pip install -e ".[dev]"  # For development dependencies
+Run tests
+
+bash
+pytest tests/
+Production Deployment
+Option 1: Docker Deployment
+dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY . .
+RUN pip install -e .
+
+CMD ["python", "-m", "causal_rag.api"]
+Option 2: API Server
+Create an API server using FastAPI:
+
+python
+from fastapi import FastAPI
+from causal_rag.core import CausalRAGPipeline
+
+app = FastAPI()
+pipeline = CausalRAGPipeline()
+
+@app.post("/answer")
+async def answer_question(question: str):
+    return pipeline.answer(question)
+
+@app.post("/initialize")
+async def initialize_kb(documents: List[str]):
+    pipeline.initialize(documents)
+    return {"status": "initialized"}
+Knowledge Base Management
+Building a Medical Knowledge Base
+Source medical literature
+
+python
+from causal_rag.data import DataProcessor
+
+# Load PubMed abstracts
+documents = DataProcessor.load_medical_corpus("pubmed_data.json")
+processed_docs = DataProcessor.prepare_knowledge_base(documents)
+Custom knowledge bases
+
+Clinical guidelines
+
+Medical textbooks
+
+Research papers
+
+Drug databases
+
+Performance Considerations
+Indexing time: O(n) for knowledge base size
+
+Query time: O(log n) with FAISS
+
+Memory: ~500MB for 10,000 documents
+
+GPU: Optional for faster inference
+
+text
+
+**docs/examples.md**
+Usage Examples
+Basic Usage
+python
+from causal_rag.core import CausalRAGPipeline
+
+# Initialize with sample medical knowledge
+knowledge_base = [
+    "Randomized controlled trial demonstrates that aspirin reduces risk of heart attack.",
+    "Study shows correlation between high cholesterol and cardiovascular disease.",
+    "Clinical guidelines recommend statins for patients with elevated LDL levels."
+]
+
+pipeline = CausalRAGPipeline()
+pipeline.initialize(knowledge_base)
+
+# Answer clinical questions
+result = pipeline.answer("Does aspirin prevent heart attacks?")
+print(f"Answer: {result['answer']}")
+print(f"Confidence: {result['confidence']:.2f}")
+print(f"Explanation: {result['explanation']}")
+Advanced Configuration
+python
+from causal_rag.core import CausalRetriever, CausalAnalyzer
+
+# Custom retriever with different model
+retriever = CausalRetriever(model_name="all-mpnet-base-v2")
+retriever.build_index(knowledge_base)
+
+# Custom analysis with different thresholds
+analyzer = CausalAnalyzer()
+
+# Retrieve and analyze
+contexts, scores = retriever.retrieve("clinical question", top_k=5)
+analysis = analyzer.analyze_evidence_quality(contexts, "question")
+Evaluation Example
+python
+from causal_rag.evaluation import EvaluationMetrics
+
+# Sample evaluation data
+true_answers = ["yes", "no", "yes", "maybe"]
+predictions = [
+    {"answer": "yes", "confidence": 0.8},
+    {"answer": "no", "confidence": 0.7},
+    {"answer": "yes", "confidence": 0.6},
+    {"answer": "maybe", "confidence": 0.4}
+]
+
+metrics = EvaluationMetrics.comprehensive_evaluation(true_answers, predictions)
+report = EvaluationMetrics.generate_evaluation_report(true_answers, predictions, "Causal-RAG")
+print(report)
+Integration with Medical Datasets
+python
+from causal_rag.data import DataProcessor
+
+# Load PubMedQA dataset
+samples = DataProcessor.load_pubmedqa_dataset("pubmedqa_train.parquet")
+
+# Extract questions for knowledge base creation
+questions = [sample["question"] for sample in samples[:1000]]
+knowledge_base = DataProcessor.create_synthetic_knowledge_base(questions)
+
+# Use for pipeline initialization
+pipeline.initialize(knowledge_base)
+Batch Processing
+python
+# Process multiple questions efficiently
+questions = [
+    "Does medication X treat condition Y?",
+    "What are the side effects of drug Z?",
+    "Is treatment A better than treatment B?"
+]
+
+results = pipeline.batch_answer(questions)
+
+for i, result in enumerate(results):
+    print(f"Q: {questions[i]}")
+    print(f"A: {result['answer']} (confidence: {result['confidence']:.2f})")
+    print()
+text
+
+## 8. Example Notebooks
+
+**experiments/baseline_rag.ipynb**
+*(This would be a Jupyter notebook implementing the baseline RAG system as shown in our research)*
+
+**experiments/causal_rag_prototype.ipynb**
+*(This would be a Jupyter notebook implementing the Causal-RAG prototypes)*
+
+**experiments/evaluation.ipynb**
+*(This would be a Jupyter notebook with comprehensive evaluation and figure generation)*
+
+## 9. GitHub Workflows
+
+**.github/workflows/python-package.yml**
+```yaml
+name: Python Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, 3.10]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install -e ".[dev]"
+    - name: Lint with flake8
+      run: |
+        flake8 causal_rag tests --count --select=E9,F63,F7,F82 --show-source --statistics
+    - name: Test with pytest
+      run: |
+        pytest tests/ -v
+
+  deploy-docs:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
+10. Additional Configuration Files
+CITATION.cff
+
+yaml
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Causal-RAG: Causally-Augmented Retrieval for Hallucination-Free Clinical Decision Support"
+authors:
+  - given-names: "Research"
+    family-names: "Team"
+version: 0.1.0
+doi: 10.5281/zenodo.XXXXXXX
+date-released: 2024-11-20
+url: "https://github.com/your-username/Causal-RAG"
+license: MIT
+repository-code: "https://github.com/your-username/Causal-RAG"
+keywords:
+  - "clinical-ai"
+  - "retrieval-augmented-generation" 
+  - "causal-inference"
+  - "medical-nlp"
+  - "ai-safety"
+CONTRIBUTING.md
+
+text
+# Contributing to Causal-RAG
+
+We welcome contributions from the community! Please follow these guidelines.
+
+## Development Setup
+
+1. Fork the repository
+2. Create a virtual environment
+3. Install development dependencies: `pip install -e ".[dev]"`
+4. Create a feature branch: `git checkout -b feature/your-feature`
+
+## Code Style
+
+- Use Black for code formatting
+- Follow PEP 8 guidelines
+- Include type hints for new functions
+- Write docstrings for all public methods
+
+## Testing
+
+- Add tests for new functionality
+- Ensure all tests pass: `pytest tests/`
+- Maintain test coverage
+
+## Pull Request Process
+
+1. Update documentation if needed
+2. Add tests for new features
+3. Ensure CI tests pass
+4. Request review from maintainers
+CODE_OF_CONDUCT.md
+
+text
+# Code of Conduct
+
+## Our Pledge
+
+We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone.
+
+## Our Standards
+
+Examples of behavior that contributes to a positive environment:
+- Using welcoming and inclusive language
+- Being respectful of differing viewpoints
+- Gracefully accepting constructive criticism
+- Focusing on what is best for the community
+
+## Enforcement
+
+Instances of abusive behavior may be reported to the project maintainers. All complaints will be reviewed and investigated.
+11. Sample Data
+data/sample/sample_medical_qa.json
+
+json
+[
+  {
+    "instruction": "As an expert doctor, answer the following clinical question.",
+    "question": "Does aspirin reduce the risk of heart attack?",
+    "answer": "yes"
+  },
+  {
+    "instruction": "As an expert doctor, answer the following clinical question.", 
+    "question": "Is vitamin C an effective treatment for the common cold?",
+    "answer": "no"
+  },
+  {
+    "instruction": "As an expert doctor, answer the following clinical question.",
+    "question": "Does prolonged sitting cause cardiovascular disease?",
+    "answer": "maybe"
+  }
+]
